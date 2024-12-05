@@ -10,6 +10,41 @@ const videoMetadata = ref<{
 } | null>(null);
 const videoUrl = ref<string | null>(null);
 const videoPlayer = ref<HTMLVideoElement | null>(null);
+const trimStart = ref(0);
+const trimEnd = ref(0);
+const videoDuration = ref(0);
+const isPlaying = ref(false);
+
+function formatTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+function handleTimeUpdate() {
+  if (!videoPlayer.value) return;
+
+  // Stop playback if we reach trimEnd
+  if (videoPlayer.value.currentTime >= trimEnd.value) {
+    videoPlayer.value.pause();
+    isPlaying.value = false;
+  }
+}
+
+function previewTrim() {
+  if (!videoPlayer.value) return;
+
+  videoPlayer.value.currentTime = trimStart.value;
+  videoPlayer.value.play();
+  isPlaying.value = true;
+}
+
+function stopPreview() {
+  if (!videoPlayer.value) return;
+
+  videoPlayer.value.pause();
+  isPlaying.value = false;
+}
 
 function handleDrop(e: DragEvent) {
   e.preventDefault();
@@ -29,6 +64,10 @@ function handleDrop(e: DragEvent) {
   video.preload = "metadata";
 
   video.onloadedmetadata = () => {
+    videoDuration.value = video.duration;
+    trimStart.value = 0;
+    trimEnd.value = video.duration;
+
     const minutes = Math.floor(video.duration / 60);
     const seconds = Math.floor(video.duration % 60);
 
@@ -90,8 +129,52 @@ onUnmounted(() => {
       </ul>
     </div>
 
+    <div v-if="videoUrl" class="trim-controls">
+      <h3>Trim Video</h3>
+      <div class="time-controls">
+        <div class="time-input">
+          <label>Start Time:</label>
+          <input
+            type="range"
+            :min="0"
+            :max="videoDuration"
+            :step="0.1"
+            v-model.number="trimStart"
+          />
+          <span>{{ formatTime(trimStart) }}</span>
+        </div>
+
+        <div class="time-input">
+          <label>End Time:</label>
+          <input
+            type="range"
+            :min="0"
+            :max="videoDuration"
+            :step="0.1"
+            v-model.number="trimEnd"
+          />
+          <span>{{ formatTime(trimEnd) }}</span>
+        </div>
+      </div>
+
+      <div class="preview-controls">
+        <button @click="previewTrim" class="control-btn" v-if="!isPlaying">
+          Preview Trim
+        </button>
+        <button @click="stopPreview" class="control-btn" v-else>
+          Stop Preview
+        </button>
+      </div>
+    </div>
+
     <div v-if="videoUrl" class="video-player">
-      <video ref="videoPlayer" :src="videoUrl" controls class="player"></video>
+      <video
+        ref="videoPlayer"
+        :src="videoUrl"
+        controls
+        class="player"
+        @timeupdate="handleTimeUpdate"
+      ></video>
     </div>
   </div>
 </template>
@@ -161,5 +244,61 @@ onUnmounted(() => {
   width: 100%;
   border-radius: 4px;
   background-color: #000;
+}
+
+.trim-controls {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.time-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.time-input {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.time-input label {
+  min-width: 80px;
+  color: #666;
+}
+
+.time-input input[type="range"] {
+  flex: 1;
+}
+
+.time-input span {
+  min-width: 50px;
+  color: #666;
+}
+
+.preview-controls {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.control-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background-color: #4caf50;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.control-btn:hover {
+  background-color: #45a049;
 }
 </style>
