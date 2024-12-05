@@ -16,6 +16,8 @@ const trimEnd = ref(0);
 const videoDuration = ref(0);
 const isPlaying = ref(false);
 const exportProgress = ref<number | null>(null);
+const trimStartTime = ref<number>(0);
+const trimDuration = ref<string>("");
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -102,8 +104,10 @@ async function trimVideo() {
   if (!videoUrl.value) return;
 
   try {
-    // Reset progress at start
+    // Reset progress and start timing
     exportProgress.value = 0;
+    trimStartTime.value = Date.now();
+    trimDuration.value = "";
 
     const composition = new core.Composition();
     const source = await core.VideoSource.from(videoUrl.value);
@@ -124,6 +128,12 @@ async function trimVideo() {
     encoder.on("render", (event) => {
       const { progress, total } = event.detail;
       exportProgress.value = Math.round((progress * 100) / total);
+
+      // Update duration every progress update
+      const elapsedSeconds = Math.floor(
+        (Date.now() - trimStartTime.value) / 1000
+      );
+      trimDuration.value = formatTime(elapsedSeconds);
     });
 
     try {
@@ -143,12 +153,17 @@ async function trimVideo() {
       );
     }
 
-    // Reset progress when done
+    // Calculate final duration
+    const totalSeconds = Math.floor((Date.now() - trimStartTime.value) / 1000);
+    trimDuration.value = formatTime(totalSeconds);
+
+    // Reset progress but keep duration displayed
     exportProgress.value = null;
   } catch (err) {
     console.error("Error trimming video:", err);
     alert("Failed to trim video. Please try again.");
     exportProgress.value = null;
+    trimDuration.value = "";
   }
 }
 
@@ -229,14 +244,22 @@ onUnmounted(() => {
           Export Trimmed Video
         </button>
 
-        <div v-if="exportProgress !== null" class="export-progress">
-          <div class="progress-bar">
+        <div
+          v-if="exportProgress !== null || trimDuration"
+          class="export-progress"
+        >
+          <div v-if="exportProgress !== null" class="progress-bar">
             <div
               class="progress-fill"
               :style="{ width: `${exportProgress}%` }"
             ></div>
           </div>
-          <span class="progress-text">{{ exportProgress }}%</span>
+          <span v-if="exportProgress !== null" class="progress-text">
+            {{ exportProgress }}%
+          </span>
+          <span v-if="trimDuration" class="duration-text">
+            Time: {{ trimDuration }}
+          </span>
         </div>
       </div>
     </div>
@@ -391,6 +414,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .progress-bar {
@@ -409,6 +433,12 @@ onUnmounted(() => {
 
 .progress-text {
   min-width: 4rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.duration-text {
+  min-width: 6rem;
   color: #666;
   font-size: 0.9rem;
 }
