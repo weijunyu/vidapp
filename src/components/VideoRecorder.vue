@@ -91,6 +91,20 @@ function calculateDuration(): string {
   const remainingSeconds = seconds % 60;
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
+
+// Add this new function
+function downloadRecording() {
+  if (!recordedVideo.value) return;
+
+  const url = URL.createObjectURL(recordedVideo.value);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `recording-${new Date().toISOString()}.webm`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -125,6 +139,14 @@ function calculateDuration(): string {
         :disabled="!isRecording"
       >
         Stop Recording
+      </button>
+
+      <button
+        @click="downloadRecording"
+        class="control-btn download-btn"
+        :disabled="!recordedVideo"
+      >
+        Download Recording
       </button>
     </div>
 
@@ -202,5 +224,13 @@ video {
 .metadata li {
   margin: 0.25rem 0;
   color: #666;
+}
+
+.download-btn {
+  background-color: #2196f3;
+}
+
+.download-btn:hover:not(:disabled) {
+  background-color: #1976d2;
 }
 </style>
