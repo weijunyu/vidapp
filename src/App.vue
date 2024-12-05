@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import VideoDropzone from "./components/VideoDropzone.vue";
+import VideoEditor from "./components/VideoEditor.vue";
 import VideoRecorder from "./components/VideoRecorder.vue";
 </script>
 
@@ -15,8 +15,8 @@ import VideoRecorder from "./components/VideoRecorder.vue";
     <div class="divider"></div>
 
     <section class="video-section">
-      <h2>Upload Video</h2>
-      <VideoDropzone />
+      <h2>Edit Video</h2>
+      <VideoEditor />
     </section>
   </div>
 </template>
