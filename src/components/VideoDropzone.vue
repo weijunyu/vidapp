@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue";
+import * as core from "@diffusionstudio/core";
 
 const isDragging = ref(false);
 const videoMetadata = ref<{
@@ -14,6 +15,7 @@ const trimStart = ref(0);
 const trimEnd = ref(0);
 const videoDuration = ref(0);
 const isPlaying = ref(false);
+const exportProgress = ref<number | null>(null);
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -96,6 +98,60 @@ function handleDragLeave() {
   isDragging.value = false;
 }
 
+async function trimVideo() {
+  if (!videoUrl.value) return;
+
+  try {
+    // Reset progress at start
+    exportProgress.value = 0;
+
+    const composition = new core.Composition();
+    const source = await core.VideoSource.from(videoUrl.value);
+
+    const startFrame = Math.floor(trimStart.value * 30);
+    const endFrame = Math.floor(trimEnd.value * 30);
+
+    const video = new core.VideoClip(source, {
+      position: "center",
+      height: "100%",
+      width: "100%",
+    }).subclip(startFrame, endFrame);
+
+    await composition.add(video);
+    const encoder = new core.Encoder(composition);
+
+    // Add progress listener
+    encoder.on("render", (event) => {
+      const { progress, total } = event.detail;
+      exportProgress.value = Math.round((progress * 100) / total);
+    });
+
+    try {
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: `trimmed_${videoMetadata.value?.name || "video.mp4"}`,
+        types: [
+          {
+            description: "Video File",
+            accept: { "video/mp4": [".mp4"] },
+          },
+        ],
+      });
+      await encoder.render(fileHandle);
+    } catch (err) {
+      await encoder.render(
+        `trimmed_${videoMetadata.value?.name || "video.mp4"}`
+      );
+    }
+
+    // Reset progress when done
+    exportProgress.value = null;
+  } catch (err) {
+    console.error("Error trimming video:", err);
+    alert("Failed to trim video. Please try again.");
+    exportProgress.value = null;
+  }
+}
+
 // Add cleanup on component unmount
 onUnmounted(() => {
   if (videoUrl.value) {
@@ -164,6 +220,24 @@ onUnmounted(() => {
         <button @click="stopPreview" class="control-btn" v-else>
           Stop Preview
         </button>
+
+        <button
+          @click="trimVideo"
+          class="control-btn trim-btn"
+          :disabled="!videoUrl"
+        >
+          Export Trimmed Video
+        </button>
+
+        <div v-if="exportProgress !== null" class="export-progress">
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              :style="{ width: `${exportProgress}%` }"
+            ></div>
+          </div>
+          <span class="progress-text">{{ exportProgress }}%</span>
+        </div>
       </div>
     </div>
 
@@ -285,6 +359,7 @@ onUnmounted(() => {
 .preview-controls {
   display: flex;
   justify-content: center;
+  gap: 1rem;
   margin-top: 1rem;
 }
 
@@ -300,5 +375,41 @@ onUnmounted(() => {
 
 .control-btn:hover {
   background-color: #45a049;
+}
+
+.trim-btn {
+  background-color: #2196f3;
+}
+
+.trim-btn:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.export-progress {
+  margin-top: 1rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #2196f3;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  min-width: 4rem;
+  color: #666;
+  font-size: 0.9rem;
 }
 </style>
