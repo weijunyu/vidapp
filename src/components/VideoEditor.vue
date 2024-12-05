@@ -138,10 +138,12 @@ async function trimVideo() {
 
     try {
       const fileHandle = await window.showSaveFilePicker({
-        suggestedName: `trimmed_${videoMetadata.value?.name || "video.mp4"}`,
+        suggestedName: `trimmed_${
+          videoMetadata.value?.name.replace(/\.[^/.]+$/, "") || "video"
+        }.mp4`,
         types: [
           {
-            description: "Video File",
+            description: "MP4 Video",
             accept: { "video/mp4": [".mp4"] },
           },
         ],
@@ -149,7 +151,9 @@ async function trimVideo() {
       await encoder.render(fileHandle);
     } catch (err) {
       await encoder.render(
-        `trimmed_${videoMetadata.value?.name || "video.mp4"}`
+        `trimmed_${
+          videoMetadata.value?.name.replace(/\.[^/.]+$/, "") || "video"
+        }.mp4`
       );
     }
 
@@ -167,6 +171,50 @@ async function trimVideo() {
   }
 }
 
+function handleFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const files = input.files;
+
+  if (!files || files.length === 0) return;
+
+  const file = files[0];
+  if (!file.type.startsWith("video/")) {
+    alert("Please select a video file");
+    input.value = ""; // Reset input
+    return;
+  }
+
+  // Create video element to get duration
+  const video = document.createElement("video");
+  video.preload = "metadata";
+
+  video.onloadedmetadata = () => {
+    videoDuration.value = video.duration;
+    trimStart.value = 0;
+    trimEnd.value = video.duration;
+
+    const minutes = Math.floor(video.duration / 60);
+    const seconds = Math.floor(video.duration % 60);
+
+    videoMetadata.value = {
+      name: file.name,
+      size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+      type: file.type,
+      duration: `${minutes}:${seconds.toString().padStart(2, "0")}`,
+    };
+  };
+
+  // Create and store URL for video playback
+  if (videoUrl.value) {
+    URL.revokeObjectURL(videoUrl.value);
+  }
+  videoUrl.value = URL.createObjectURL(file);
+  video.src = videoUrl.value;
+
+  // Reset input for allowing the same file to be selected again
+  input.value = "";
+}
+
 // Add cleanup on component unmount
 onUnmounted(() => {
   if (videoUrl.value) {
@@ -176,7 +224,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="video-dropzone">
+  <div class="video-editor">
     <div
       class="dropzone"
       :class="{ dragging: isDragging }"
@@ -187,6 +235,16 @@ onUnmounted(() => {
       <div class="dropzone-content">
         <i class="upload-icon">📁</i>
         <p>Drag and drop a video file here</p>
+        <p class="or-divider">or</p>
+        <label class="file-input-label">
+          <input
+            type="file"
+            accept="video/*"
+            class="file-input"
+            @change="handleFileSelect"
+          />
+          Choose a video file
+        </label>
       </div>
     </div>
 
@@ -277,7 +335,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.video-dropzone {
+.video-editor {
   width: 100%;
   max-width: 640px;
   margin: 1rem 0;
@@ -441,5 +499,28 @@ onUnmounted(() => {
   min-width: 6rem;
   color: #666;
   font-size: 0.9rem;
+}
+
+.or-divider {
+  margin: 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-label {
+  padding: 0.5rem 1rem;
+  background-color: #4caf50;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.file-input-label:hover {
+  background-color: #45a049;
 }
 </style>
