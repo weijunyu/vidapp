@@ -384,6 +384,10 @@ onUnmounted(() => {
   border-radius: 4px;
 }
 
+.trim-controls h3 {
+  color: #333;
+}
+
 .time-controls {
   display: flex;
   flex-direction: column;
