@@ -30,6 +30,14 @@ async function startCamera() {
   }
 }
 
+// Stop the camera stream
+function stopCamera() {
+  if (stream.value) {
+    stream.value.getTracks().forEach((track) => track.stop());
+    stream.value = null;
+  }
+}
+
 // Start recording
 function startRecording() {
   if (!stream.value) return;
@@ -90,7 +98,18 @@ function calculateDuration(): string {
     <video ref="videoElement" autoplay muted playsinline></video>
 
     <div class="controls">
-      <button @click="startCamera" class="control-btn">Start Camera</button>
+      <button v-if="!stream" @click="startCamera" class="control-btn">
+        Start Camera
+      </button>
+
+      <button
+        v-else
+        @click="stopCamera"
+        class="control-btn"
+        :disabled="isRecording"
+      >
+        Stop Camera
+      </button>
 
       <button
         @click="startRecording"
