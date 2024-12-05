@@ -30,7 +30,7 @@ import VideoRecorder from "./components/VideoRecorder.vue";
 
 h1 {
   text-align: center;
-  color: #2c3e50;
+  color: #ffffff;
   margin-bottom: 2rem;
 }
 
@@ -44,6 +44,9 @@ h2 {
   background-color: #f8f9fa;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .video-section + .video-section {

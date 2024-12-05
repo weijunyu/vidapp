@@ -2,68 +2,45 @@
 import { ref, onUnmounted } from "vue";
 import * as core from "@diffusionstudio/core";
 
-const isDragging = ref(false);
-const videoMetadata = ref<{
+// Types
+interface VideoMetadata {
   size: string;
   type: string;
   duration: string;
   name: string;
-} | null>(null);
+}
+
+// State
+const isDragging = ref(false);
+const videoMetadata = ref<VideoMetadata | null>(null);
 const videoUrl = ref<string | null>(null);
 const videoPlayer = ref<HTMLVideoElement | null>(null);
+
+// Video trim state
+const videoDuration = ref(0);
 const trimStart = ref(0);
 const trimEnd = ref(0);
-const videoDuration = ref(0);
 const isPlaying = ref(false);
+
+// Export state
 const exportProgress = ref<number | null>(null);
 const trimStartTime = ref<number>(0);
 const trimDuration = ref<string>("");
 
+// Utility functions
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-function handleTimeUpdate() {
-  if (!videoPlayer.value) return;
-
-  // Stop playback if we reach trimEnd
-  if (videoPlayer.value.currentTime >= trimEnd.value) {
-    videoPlayer.value.pause();
-    isPlaying.value = false;
-  }
-}
-
-function previewTrim() {
-  if (!videoPlayer.value) return;
-
-  videoPlayer.value.currentTime = trimStart.value;
-  videoPlayer.value.play();
-  isPlaying.value = true;
-}
-
-function stopPreview() {
-  if (!videoPlayer.value) return;
-
-  videoPlayer.value.pause();
-  isPlaying.value = false;
-}
-
-function handleDrop(e: DragEvent) {
-  e.preventDefault();
-  isDragging.value = false;
-
-  const files = e.dataTransfer?.files;
-  if (!files || files.length === 0) return;
-
-  const file = files[0];
+// Video loading
+function loadVideo(file: File) {
   if (!file.type.startsWith("video/")) {
-    alert("Please drop a video file");
-    return;
+    alert("Please select a video file");
+    return false;
   }
 
-  // Create video element to get duration
   const video = document.createElement("video");
   video.preload = "metadata";
 
@@ -89,6 +66,27 @@ function handleDrop(e: DragEvent) {
   }
   videoUrl.value = URL.createObjectURL(file);
   video.src = videoUrl.value;
+
+  return true;
+}
+
+// Event handlers
+function handleDrop(e: DragEvent) {
+  e.preventDefault();
+  isDragging.value = false;
+
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  loadVideo(files[0]);
+}
+
+function handleFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const files = input.files;
+
+  if (!files || files.length === 0) return;
+  loadVideo(files[0]);
+  input.value = ""; // Reset input for allowing the same file to be selected again
 }
 
 function handleDragOver(e: DragEvent) {
@@ -100,18 +98,42 @@ function handleDragLeave() {
   isDragging.value = false;
 }
 
+// Video playback controls
+function handleTimeUpdate() {
+  if (!videoPlayer.value) return;
+
+  if (videoPlayer.value.currentTime >= trimEnd.value) {
+    videoPlayer.value.pause();
+    isPlaying.value = false;
+  }
+}
+
+function previewTrim() {
+  if (!videoPlayer.value) return;
+  videoPlayer.value.currentTime = trimStart.value;
+  videoPlayer.value.play();
+  isPlaying.value = true;
+}
+
+function stopPreview() {
+  if (!videoPlayer.value) return;
+  videoPlayer.value.pause();
+  isPlaying.value = false;
+}
+
+// Video export
 async function trimVideo() {
   if (!videoUrl.value) return;
 
   try {
-    // Reset progress and start timing
+    // Initialize export state
     exportProgress.value = 0;
     trimStartTime.value = Date.now();
     trimDuration.value = "";
 
+    // Set up composition
     const composition = new core.Composition();
     const source = await core.VideoSource.from(videoUrl.value);
-
     const startFrame = Math.floor(trimStart.value * 30);
     const endFrame = Math.floor(trimEnd.value * 30);
 
@@ -124,44 +146,36 @@ async function trimVideo() {
     await composition.add(video);
     const encoder = new core.Encoder(composition);
 
-    // Add progress listener
+    // Set up progress tracking
     encoder.on("render", (event) => {
       const { progress, total } = event.detail;
       exportProgress.value = Math.round((progress * 100) / total);
 
-      // Update duration every progress update
       const elapsedSeconds = Math.floor(
         (Date.now() - trimStartTime.value) / 1000
       );
       trimDuration.value = formatTime(elapsedSeconds);
     });
 
+    // Handle file saving
+    const suggestedName = `trimmed_${
+      videoMetadata.value?.name.replace(/\.[^/.]+$/, "") || "video"
+    }.mp4`;
     try {
       const fileHandle = await window.showSaveFilePicker({
-        suggestedName: `trimmed_${
-          videoMetadata.value?.name.replace(/\.[^/.]+$/, "") || "video"
-        }.mp4`,
+        suggestedName,
         types: [
-          {
-            description: "MP4 Video",
-            accept: { "video/mp4": [".mp4"] },
-          },
+          { description: "MP4 Video", accept: { "video/mp4": [".mp4"] } },
         ],
       });
       await encoder.render(fileHandle);
-    } catch (err) {
-      await encoder.render(
-        `trimmed_${
-          videoMetadata.value?.name.replace(/\.[^/.]+$/, "") || "video"
-        }.mp4`
-      );
+    } catch {
+      await encoder.render(suggestedName);
     }
 
-    // Calculate final duration
+    // Finalize export
     const totalSeconds = Math.floor((Date.now() - trimStartTime.value) / 1000);
     trimDuration.value = formatTime(totalSeconds);
-
-    // Reset progress but keep duration displayed
     exportProgress.value = null;
   } catch (err) {
     console.error("Error trimming video:", err);
@@ -171,51 +185,7 @@ async function trimVideo() {
   }
 }
 
-function handleFileSelect(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const files = input.files;
-
-  if (!files || files.length === 0) return;
-
-  const file = files[0];
-  if (!file.type.startsWith("video/")) {
-    alert("Please select a video file");
-    input.value = ""; // Reset input
-    return;
-  }
-
-  // Create video element to get duration
-  const video = document.createElement("video");
-  video.preload = "metadata";
-
-  video.onloadedmetadata = () => {
-    videoDuration.value = video.duration;
-    trimStart.value = 0;
-    trimEnd.value = video.duration;
-
-    const minutes = Math.floor(video.duration / 60);
-    const seconds = Math.floor(video.duration % 60);
-
-    videoMetadata.value = {
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      type: file.type,
-      duration: `${minutes}:${seconds.toString().padStart(2, "0")}`,
-    };
-  };
-
-  // Create and store URL for video playback
-  if (videoUrl.value) {
-    URL.revokeObjectURL(videoUrl.value);
-  }
-  videoUrl.value = URL.createObjectURL(file);
-  video.src = videoUrl.value;
-
-  // Reset input for allowing the same file to be selected again
-  input.value = "";
-}
-
-// Add cleanup on component unmount
+// Cleanup
 onUnmounted(() => {
   if (videoUrl.value) {
     URL.revokeObjectURL(videoUrl.value);
@@ -234,7 +204,7 @@ onUnmounted(() => {
     >
       <div class="dropzone-content">
         <i class="upload-icon">📁</i>
-        <p>Drag and drop a video file here</p>
+        <p class="dropzone-text">Drag and drop a video file here</p>
         <p class="or-divider">or</p>
         <label class="file-input-label">
           <input
@@ -361,6 +331,10 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+}
+
+.dropzone-text {
+  color: #666;
 }
 
 .upload-icon {
