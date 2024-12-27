@@ -8,6 +8,10 @@ interface VideoMetadata {
   type: string;
   duration: string;
   name: string;
+  url: string;
+  trimStart: number;
+  trimEnd: number;
+  videoDuration: number;
 }
 // #endregion
 
@@ -27,6 +31,8 @@ const isPlaying = ref(false);
 const exportProgress = ref<number | null>(null);
 const trimStartTime = ref<number>(0);
 const trimDuration = ref<string>("");
+
+const videos = ref<VideoMetadata[]>([]);
 // #endregion
 
 // #region Utility Functions
@@ -48,28 +54,29 @@ function loadVideo(file: File) {
   video.preload = "metadata";
 
   video.onloadedmetadata = () => {
-    videoDuration.value = video.duration;
-    trimStart.value = 0;
-    trimEnd.value = video.duration;
-
-    const minutes = Math.floor(video.duration / 60);
-    const seconds = Math.floor(video.duration % 60);
-
-    videoMetadata.value = {
+    const metadata: VideoMetadata = {
       name: file.name,
       size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       type: file.type,
-      duration: `${minutes}:${seconds.toString().padStart(2, "0")}`,
+      duration: formatTime(video.duration),
+      url: URL.createObjectURL(file),
+      trimStart: 0,
+      trimEnd: video.duration,
+      videoDuration: video.duration,
     };
+
+    // Add to videos array and set as current video
+    videos.value.push(metadata);
+    videoMetadata.value = metadata;
+    videoUrl.value = metadata.url;
+
+    // Update current trim values to match selected video
+    videoDuration.value = metadata.videoDuration;
+    trimStart.value = metadata.trimStart;
+    trimEnd.value = metadata.trimEnd;
   };
 
-  // Create and store URL for video playback
-  if (videoUrl.value) {
-    URL.revokeObjectURL(videoUrl.value);
-  }
-  videoUrl.value = URL.createObjectURL(file);
-  video.src = videoUrl.value;
-
+  video.src = URL.createObjectURL(file);
   return true;
 }
 // #endregion
@@ -101,6 +108,22 @@ function handleDragOver(e: DragEvent) {
 function handleDragLeave() {
   isDragging.value = false;
 }
+
+function handleTrimChange() {
+  if (!videoMetadata.value) return;
+
+  // Update the trim values for the current video
+  videoMetadata.value.trimStart = trimStart.value;
+  videoMetadata.value.trimEnd = trimEnd.value;
+}
+
+function selectVideo(video: VideoMetadata) {
+  videoUrl.value = video.url;
+  videoMetadata.value = video;
+  videoDuration.value = video.videoDuration;
+  trimStart.value = video.trimStart;
+  trimEnd.value = video.trimEnd;
+}
 // #endregion
 
 // #region Video Playback Controls
@@ -128,36 +151,38 @@ function stopPreview() {
 // #endregion
 
 // #region Video Export
-async function trimVideo() {
-  if (!videoUrl.value) return;
+async function exportVideo() {
+  if (videos.value.length === 0) return;
 
   try {
-    // Initialize export state
     exportProgress.value = 0;
     trimStartTime.value = Date.now();
     trimDuration.value = "";
 
-    // Set up composition
     const composition = new core.Composition();
-    const source = await core.VideoSource.from(videoUrl.value);
-    const startFrame = Math.floor(trimStart.value * 30);
-    const endFrame = Math.floor(trimEnd.value * 30);
+    const track = composition.createTrack("video").stacked();
 
-    const video = new core.VideoClip(source, {
-      position: "center",
-      height: "100%",
-      width: "100%",
-    })
-      //   [----------] <- composition
-      // [------]       <- video clip
-      //   ^s  ^e
-      .offsetBy(-1 * startFrame) // we're "moving" the start of the clip out of the composition
-      .subclip(0, endFrame); // select the ending frame to clip to.
+    // Process each video in sequence
+    for (const videoMeta of videos.value) {
+      const source = await core.VideoSource.from(videoMeta.url);
+      const video = new core.VideoClip(source, {
+        position: "center",
+        height: "100%",
+        width: "100%",
+      });
 
-    await composition.add(video);
+      // Apply trim settings for this video
+      const startFrame = Math.floor(videoMeta.trimStart * 30);
+      const endFrame = Math.floor(videoMeta.trimEnd * 30);
+      video.offsetBy(-1 * startFrame);
+      video.subclip(0, endFrame);
+
+      // Add to track and update frame counter
+      await track.add(video);
+    }
+
     const encoder = new core.Encoder(composition);
 
-    // Set up progress tracking
     encoder.on("render", (event) => {
       const { progress, total } = event.detail;
       exportProgress.value = Math.round((progress * 100) / total);
@@ -168,10 +193,7 @@ async function trimVideo() {
       trimDuration.value = formatTime(elapsedSeconds);
     });
 
-    // Handle file saving
-    const suggestedName = `trimmed_${
-      videoMetadata.value?.name.replace(/\.[^/.]+$/, "") || "video"
-    }.mp4`;
+    const suggestedName = `combined_${Date.now()}.mp4`;
     try {
       const fileHandle = await window.showSaveFilePicker({
         suggestedName,
@@ -184,13 +206,12 @@ async function trimVideo() {
       await encoder.render(suggestedName);
     }
 
-    // Finalize export
     const totalSeconds = Math.floor((Date.now() - trimStartTime.value) / 1000);
     trimDuration.value = formatTime(totalSeconds);
     exportProgress.value = null;
   } catch (err) {
-    console.error("Error trimming video:", err);
-    alert("Failed to trim video. Please try again.");
+    console.error("Error exporting video:", err);
+    alert("Failed to export video. Please try again.");
     exportProgress.value = null;
     trimDuration.value = "";
   }
@@ -199,9 +220,10 @@ async function trimVideo() {
 
 // #region Cleanup
 onUnmounted(() => {
-  if (videoUrl.value) {
-    URL.revokeObjectURL(videoUrl.value);
-  }
+  // Clean up all video URLs
+  videos.value.forEach((video) => {
+    URL.revokeObjectURL(video.url);
+  });
 });
 // #endregion
 </script>
@@ -252,6 +274,7 @@ onUnmounted(() => {
             :max="videoDuration"
             :step="0.1"
             v-model.number="trimStart"
+            @input="handleTrimChange"
           />
           <span>{{ formatTime(trimStart) }}</span>
         </div>
@@ -264,6 +287,7 @@ onUnmounted(() => {
             :max="videoDuration"
             :step="0.1"
             v-model.number="trimEnd"
+            @input="handleTrimChange"
           />
           <span>{{ formatTime(trimEnd) }}</span>
         </div>
@@ -275,14 +299,6 @@ onUnmounted(() => {
         </button>
         <button @click="stopPreview" class="control-btn" v-else>
           Stop Preview
-        </button>
-
-        <button
-          @click="trimVideo"
-          class="control-btn trim-btn"
-          :disabled="!videoUrl"
-        >
-          Export Trimmed Video
         </button>
 
         <div
@@ -313,6 +329,36 @@ onUnmounted(() => {
         class="player"
         @timeupdate="handleTimeUpdate"
       ></video>
+    </div>
+
+    <div v-if="videos.length > 0" class="videos-list">
+      <h3>Uploaded Videos:</h3>
+      <ul>
+        <li
+          v-for="(video, index) in videos"
+          :key="index"
+          :class="{ active: videoUrl === video.url }"
+          @click="selectVideo(video)"
+        >
+          <div class="video-info">
+            <span class="video-name">{{ video.name }}</span>
+            <span class="video-duration">
+              {{ formatTime(video.trimStart) }} -
+              {{ formatTime(video.trimEnd) }} ({{
+                formatTime(video.trimEnd - video.trimStart)
+              }})
+            </span>
+          </div>
+        </li>
+      </ul>
+
+      <button
+        @click="exportVideo"
+        class="control-btn trim-btn"
+        :disabled="!videoUrl"
+      >
+        Export
+      </button>
     </div>
   </div>
 </template>
@@ -513,5 +559,51 @@ onUnmounted(() => {
 
 .file-input-label:hover {
   background-color: #45a049;
+}
+
+.videos-list {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.videos-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.videos-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  margin: 0.25rem 0;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.videos-list li.active {
+  background-color: #e3f2fd;
+}
+
+.videos-list li:hover {
+  background-color: #f5f5f5;
+}
+
+.video-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.video-name {
+  font-weight: 500;
+}
+
+.video-duration {
+  font-size: 0.9em;
+  color: #666;
 }
 </style>
