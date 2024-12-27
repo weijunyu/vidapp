@@ -2,15 +2,16 @@
 import { ref, onUnmounted } from "vue";
 import * as core from "@diffusionstudio/core";
 
-// Types
+// #region Types
 interface VideoMetadata {
   size: string;
   type: string;
   duration: string;
   name: string;
 }
+// #endregion
 
-// State
+// #region State Management
 const isDragging = ref(false);
 const videoMetadata = ref<VideoMetadata | null>(null);
 const videoUrl = ref<string | null>(null);
@@ -26,15 +27,17 @@ const isPlaying = ref(false);
 const exportProgress = ref<number | null>(null);
 const trimStartTime = ref<number>(0);
 const trimDuration = ref<string>("");
+// #endregion
 
-// Utility functions
+// #region Utility Functions
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
+// #endregion
 
-// Video loading
+// #region Video Loading
 function loadVideo(file: File) {
   if (!file.type.startsWith("video/")) {
     alert("Please select a video file");
@@ -69,8 +72,9 @@ function loadVideo(file: File) {
 
   return true;
 }
+// #endregion
 
-// Event handlers
+// #region Event Handlers
 function handleDrop(e: DragEvent) {
   e.preventDefault();
   isDragging.value = false;
@@ -97,8 +101,9 @@ function handleDragOver(e: DragEvent) {
 function handleDragLeave() {
   isDragging.value = false;
 }
+// #endregion
 
-// Video playback controls
+// #region Video Playback Controls
 function handleTimeUpdate() {
   if (!videoPlayer.value) return;
 
@@ -120,8 +125,9 @@ function stopPreview() {
   videoPlayer.value.pause();
   isPlaying.value = false;
 }
+// #endregion
 
-// Video export
+// #region Video Export
 async function trimVideo() {
   if (!videoUrl.value) return;
 
@@ -184,13 +190,15 @@ async function trimVideo() {
     trimDuration.value = "";
   }
 }
+// #endregion
 
-// Cleanup
+// #region Cleanup
 onUnmounted(() => {
   if (videoUrl.value) {
     URL.revokeObjectURL(videoUrl.value);
   }
 });
+// #endregion
 </script>
 
 <template>
