@@ -147,7 +147,12 @@ async function trimVideo() {
       position: "center",
       height: "100%",
       width: "100%",
-    }).subclip(startFrame, endFrame);
+    })
+      //   [----------] <- composition
+      // [------]       <- video clip
+      //   ^s  ^e
+      .offsetBy(-1 * startFrame) // we're "moving" the start of the clip out of the composition
+      .subclip(0, endFrame); // select the ending frame to clip to.
 
     await composition.add(video);
     const encoder = new core.Encoder(composition);
