@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue";
+import VideoPreview from "./recorder/VideoPreview.vue";
+import RecordingControls from "./recorder/RecordingControls.vue";
+import RecordingMetadata from "./recorder/RecordingMetadata.vue";
 
 const stream = ref<MediaStream | null>(null);
 const mediaRecorder = ref<MediaRecorder | null>(null);
 const recordedChunks = ref<Blob[]>([]);
-const videoElement = ref<HTMLVideoElement | null>(null);
 const isRecording = ref(false);
 const recordedVideo = ref<Blob | null>(null);
 const videoMetadata = ref<{
@@ -27,10 +29,6 @@ async function startCamera() {
       video: true,
       audio: true,
     });
-
-    if (videoElement.value) {
-      videoElement.value.srcObject = stream.value;
-    }
   } catch (err) {
     console.error("Error accessing camera:", err);
   }
@@ -116,16 +114,6 @@ function stopRecording() {
   }
 }
 
-// Clean up on component unmount
-onUnmounted(() => {
-  if (stream.value) {
-    stream.value.getTracks().forEach((track) => track.stop());
-  }
-  if (durationInterval) {
-    clearInterval(durationInterval);
-  }
-});
-
 function calculateDuration(): string {
   if (!mediaRecorder.value) return "0:00";
   const seconds = Math.floor((Date.now() - recordingStartTime.value) / 1000);
@@ -134,7 +122,6 @@ function calculateDuration(): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-// Add this new function
 function downloadRecording() {
   if (!recordedVideo.value) return;
 
@@ -147,63 +134,38 @@ function downloadRecording() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// Clean up on component unmount
+onUnmounted(() => {
+  if (stream.value) {
+    stream.value.getTracks().forEach((track) => track.stop());
+  }
+  if (durationInterval) {
+    clearInterval(durationInterval);
+  }
+});
 </script>
 
 <template>
   <div class="video-recorder">
-    <video ref="videoElement" autoplay muted playsinline></video>
+    <VideoPreview
+      :stream="stream"
+      :is-recording="isRecording"
+      :current-duration="currentDuration"
+    />
 
-    <div v-if="isRecording" class="recording-timer">
-      {{ currentDuration }}
-    </div>
+    <RecordingControls
+      :stream="stream"
+      :is-recording="isRecording"
+      :has-recorded-video="!!recordedVideo"
+      @start-camera="startCamera"
+      @stop-camera="stopCamera"
+      @start-recording="startRecording"
+      @stop-recording="stopRecording"
+      @download-recording="downloadRecording"
+    />
 
-    <div class="controls">
-      <button v-if="!stream" @click="startCamera" class="control-btn">
-        Start Camera
-      </button>
-
-      <button
-        v-else
-        @click="stopCamera"
-        class="control-btn"
-        :disabled="isRecording"
-      >
-        Stop Camera
-      </button>
-
-      <button
-        @click="startRecording"
-        class="control-btn"
-        :disabled="!stream || isRecording"
-      >
-        Start Recording
-      </button>
-
-      <button
-        @click="stopRecording"
-        class="control-btn"
-        :disabled="!isRecording"
-      >
-        Stop Recording
-      </button>
-
-      <button
-        @click="downloadRecording"
-        class="control-btn download-btn"
-        :disabled="!recordedVideo"
-      >
-        Download Recording
-      </button>
-    </div>
-
-    <div v-if="videoMetadata" class="metadata">
-      <h3>Last Recording Details:</h3>
-      <ul>
-        <li>Size: {{ videoMetadata.size }}</li>
-        <li>Format: {{ videoMetadata.type }}</li>
-        <li>Duration: {{ videoMetadata.duration }}</li>
-      </ul>
-    </div>
+    <RecordingMetadata :metadata="videoMetadata" />
   </div>
 </template>
 
@@ -216,130 +178,9 @@ function downloadRecording() {
   padding: 1rem;
 }
 
-video {
-  width: 100%;
-  max-width: 640px;
-  border-radius: 8px;
-  background-color: #000;
-}
-
-.controls {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  width: 100%;
-  padding: 0 0.5rem;
-}
-
-.control-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  border: none;
-  border-radius: 4px;
-  background-color: #4caf50;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.control-btn:disabled {
-  background-color: #424242;
-  color: #757575;
-  cursor: not-allowed;
-}
-
-.control-btn:hover:not(:disabled) {
-  background-color: #388e3c;
-}
-
-.metadata {
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #2d2d2d;
-  border-radius: 4px;
-  width: 100%;
-  max-width: 640px;
-}
-
-.metadata h3 {
-  margin: 0 0 0.5rem 0;
-  color: #e0e0e0;
-}
-
-.metadata ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.metadata li {
-  margin: 0.25rem 0;
-  color: #90a4ae;
-}
-
-.download-btn {
-  background-color: #2196f3;
-}
-
-.download-btn:hover:not(:disabled) {
-  background-color: #1976d2;
-}
-
-.recording-timer {
-  background-color: rgba(0, 0, 0, 0.7);
-  color: #ff4444;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 1.2rem;
-  margin: 1rem 0;
-}
-
-@media (prefers-color-scheme: light) {
-  .metadata {
-    background-color: #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .metadata h3 {
-    color: #1a1a1a;
-  }
-
-  .metadata li {
-    color: #666666;
-  }
-
-  .control-btn:disabled {
-    background-color: #e0e0e0;
-    color: #999999;
-  }
-
-  .recording-timer {
-    background-color: rgba(255, 255, 255, 0.9);
-    color: #ff1744;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-}
-
 @media (max-width: 768px) {
   .video-recorder {
     padding: 0.5rem;
-  }
-
-  .metadata {
-    font-size: 0.9rem;
-  }
-
-  .recording-timer {
-    font-size: 1rem;
-    padding: 0.25rem 0.75rem;
-  }
-
-  @media (max-width: 480px) {
-    .control-btn {
-      width: 100%;
-    }
   }
 }
 </style>
