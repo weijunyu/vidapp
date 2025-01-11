@@ -794,4 +794,85 @@ defineExpose({
     color: #666666;
   }
 }
+
+/* Add responsive adjustments */
+@media (max-width: 768px) {
+  .video-editor {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .dropzone {
+    padding: 1rem;
+  }
+
+  .upload-icon {
+    font-size: 1.5rem;
+  }
+
+  .time-controls {
+    gap: 0.5rem;
+  }
+
+  .time-input {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .time-input label {
+    min-width: auto;
+  }
+
+  .time-input span {
+    text-align: center;
+  }
+
+  .preview-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .export-progress {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .progress-text,
+  .duration-text {
+    text-align: center;
+  }
+
+  .video-info {
+    overflow: hidden;
+  }
+
+  .video-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Handle very narrow screens */
+  @media (max-width: 480px) {
+    .metadata ul {
+      font-size: 0.9rem;
+    }
+
+    .control-btn {
+      width: 100%;
+      margin: 0.25rem 0;
+    }
+
+    .videos-list li {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .video-duration {
+      font-size: 0.8em;
+    }
+  }
+}
 </style>

@@ -63,7 +63,7 @@ async function handleRecordingComplete(payload: {
 .app-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 h1 {
@@ -142,6 +142,23 @@ h2 {
       #d1d1d1,
       transparent
     );
+  }
+}
+
+/* Add responsive adjustments */
+@media (max-width: 768px) {
+  .video-section {
+    padding: 1rem;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
   }
 }
 </style>

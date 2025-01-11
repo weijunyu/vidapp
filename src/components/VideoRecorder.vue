@@ -225,11 +225,16 @@ video {
 
 .controls {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  padding: 0 0.5rem;
 }
 
 .control-btn {
   padding: 0.5rem 1rem;
+  font-size: 0.9rem;
   border: none;
   border-radius: 4px;
   background-color: #4caf50;
@@ -314,6 +319,27 @@ video {
     background-color: rgba(255, 255, 255, 0.9);
     color: #ff1744;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@media (max-width: 768px) {
+  .video-recorder {
+    padding: 0.5rem;
+  }
+
+  .metadata {
+    font-size: 0.9rem;
+  }
+
+  .recording-timer {
+    font-size: 1rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    .control-btn {
+      width: 100%;
+    }
   }
 }
 </style>
