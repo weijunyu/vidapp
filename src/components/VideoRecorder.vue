@@ -13,6 +13,8 @@ const videoMetadata = ref<{
   duration: string;
 } | null>(null);
 const recordingStartTime = ref<number>(0);
+const currentDuration = ref("0:00");
+let durationInterval: number | null = null;
 
 const emit = defineEmits<{
   (e: "recording-complete", payload: { blob: Blob; mimeType: string }): void;
@@ -70,6 +72,11 @@ function startRecording() {
   });
   recordingStartTime.value = Date.now();
 
+  // Start duration timer
+  durationInterval = window.setInterval(() => {
+    currentDuration.value = calculateDuration();
+  }, 1000);
+
   mediaRecorder.value.ondataavailable = (event) => {
     if (event.data.size > 0) {
       recordedChunks.value.push(event.data);
@@ -100,6 +107,12 @@ function stopRecording() {
   if (mediaRecorder.value && isRecording.value) {
     mediaRecorder.value.stop();
     isRecording.value = false;
+
+    // Clear duration timer
+    if (durationInterval) {
+      clearInterval(durationInterval);
+      durationInterval = null;
+    }
   }
 }
 
@@ -107,6 +120,9 @@ function stopRecording() {
 onUnmounted(() => {
   if (stream.value) {
     stream.value.getTracks().forEach((track) => track.stop());
+  }
+  if (durationInterval) {
+    clearInterval(durationInterval);
   }
 });
 
@@ -136,6 +152,10 @@ function downloadRecording() {
 <template>
   <div class="video-recorder">
     <video ref="videoElement" autoplay muted playsinline></video>
+
+    <div v-if="isRecording" class="recording-timer">
+      {{ currentDuration }}
+    </div>
 
     <div class="controls">
       <button v-if="!stream" @click="startCamera" class="control-btn">
@@ -258,5 +278,15 @@ video {
 
 .download-btn:hover:not(:disabled) {
   background-color: #1976d2;
+}
+
+.recording-timer {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #ff4444;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 1.2rem;
+  margin: 1rem 0;
 }
 </style>
