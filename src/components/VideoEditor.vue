@@ -44,11 +44,80 @@ function formatTime(seconds: number): string {
 // #endregion
 
 // #region Video Loading
+function loadVideoFromBlob(
+  blob: Blob,
+  mimeType: string,
+  filename: string = `recording-${new Date().toISOString()}.${
+    mimeType.split("/")[1]
+  }`
+) {
+  const video = document.createElement("video");
+  video.preload = "metadata";
+
+  const videoObjectURL = URL.createObjectURL(blob);
+
+  return new Promise<boolean>((resolve) => {
+    video.onloadedmetadata = async () => {
+      console.log("Video attributes:", {
+        duration: video.duration,
+        readyState: video.readyState,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        networkState: video.networkState,
+        error: video.error,
+        currentSrc: video.currentSrc,
+        seeking: video.seeking,
+        paused: video.paused,
+        played: video.played,
+        buffered: video.buffered,
+        currentTime: video.currentTime,
+      });
+
+      // Ensure video duration is valid
+      if (!isFinite(video.duration)) {
+        console.error("Invalid video duration", video.duration);
+      }
+
+      const metadata: VideoMetadata = {
+        name: filename,
+        size: `${(blob.size / (1024 * 1024)).toFixed(2)} MB`,
+        type: blob.type,
+        duration: formatTime(video.duration),
+        url: videoObjectURL,
+        trimStart: 0,
+        trimEnd: video.duration,
+        videoDuration: video.duration,
+      };
+
+      // Add to videos array and set as current video
+      videos.value.push(metadata);
+      videoMetadata.value = metadata;
+      videoUrl.value = metadata.url;
+
+      // Update current trim values to match selected video
+      videoDuration.value = metadata.videoDuration;
+      trimStart.value = metadata.trimStart;
+      trimEnd.value = metadata.trimEnd;
+
+      resolve(true);
+    };
+
+    video.onerror = () => {
+      console.error("Error loading video metadata");
+      resolve(false);
+    };
+
+    video.src = videoObjectURL;
+  });
+}
+
 function loadVideo(file: File) {
   if (!file.type.startsWith("video/")) {
     alert("Please select a video file");
     return false;
   }
+
+  const videoObjectURL = URL.createObjectURL(file);
 
   const video = document.createElement("video");
   video.preload = "metadata";
@@ -59,7 +128,7 @@ function loadVideo(file: File) {
       size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       type: file.type,
       duration: formatTime(video.duration),
-      url: URL.createObjectURL(file),
+      url: videoObjectURL,
       trimStart: 0,
       trimEnd: video.duration,
       videoDuration: video.duration,
@@ -76,7 +145,7 @@ function loadVideo(file: File) {
     trimEnd.value = metadata.trimEnd;
   };
 
-  video.src = URL.createObjectURL(file);
+  video.src = videoObjectURL;
   return true;
 }
 // #endregion
@@ -226,6 +295,10 @@ onUnmounted(() => {
   });
 });
 // #endregion
+
+defineExpose({
+  loadVideoFromBlob,
+});
 </script>
 
 <template>

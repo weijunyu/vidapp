@@ -1,6 +1,24 @@
 <script setup lang="ts">
 import VideoEditor from "./components/VideoEditor.vue";
 import VideoRecorder from "./components/VideoRecorder.vue";
+import { ref } from "vue";
+
+const videoEditorRef = ref<InstanceType<typeof VideoEditor> | null>(null);
+
+async function handleRecordingComplete(payload: {
+  blob: Blob;
+  mimeType: string;
+}) {
+  if (videoEditorRef.value) {
+    const success = await videoEditorRef.value.loadVideoFromBlob(
+      payload.blob,
+      payload.mimeType
+    );
+    if (!success) {
+      console.error("Failed to load video into editor");
+    }
+  }
+}
 </script>
 
 <template>
@@ -9,14 +27,14 @@ import VideoRecorder from "./components/VideoRecorder.vue";
 
     <section class="video-section">
       <h2>Record Video</h2>
-      <VideoRecorder />
+      <VideoRecorder @recording-complete="handleRecordingComplete" />
     </section>
 
     <div class="divider"></div>
 
     <section class="video-section">
       <h2>Edit Video</h2>
-      <VideoEditor />
+      <VideoEditor ref="videoEditorRef" />
     </section>
   </div>
 </template>

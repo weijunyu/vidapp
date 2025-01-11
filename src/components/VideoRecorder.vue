@@ -14,6 +14,10 @@ const videoMetadata = ref<{
 } | null>(null);
 const recordingStartTime = ref<number>(0);
 
+const emit = defineEmits<{
+  (e: "recording-complete", payload: { blob: Blob; mimeType: string }): void;
+}>();
+
 // Start the camera stream
 async function startCamera() {
   try {
@@ -38,12 +42,32 @@ function stopCamera() {
   }
 }
 
+function getBestSupportedMimeType() {
+  const types = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4;codecs=h264,aac",
+    "video/mp4",
+  ];
+
+  return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
 // Start recording
 function startRecording() {
   if (!stream.value) return;
 
+  const mimeType = getBestSupportedMimeType();
+  if (!mimeType) {
+    console.error("No supported media recording MIME types found");
+    return;
+  }
+
   recordedChunks.value = [];
-  mediaRecorder.value = new MediaRecorder(stream.value);
+  mediaRecorder.value = new MediaRecorder(stream.value, {
+    mimeType: mimeType,
+  });
   recordingStartTime.value = Date.now();
 
   mediaRecorder.value.ondataavailable = (event) => {
@@ -53,7 +77,7 @@ function startRecording() {
   };
 
   mediaRecorder.value.onstop = () => {
-    const blob = new Blob(recordedChunks.value, { type: "video/webm" });
+    const blob = new Blob(recordedChunks.value, { type: mimeType });
     recordedVideo.value = blob;
 
     // Calculate metadata
@@ -63,6 +87,8 @@ function startRecording() {
       type: blob.type,
       duration: calculateDuration(),
     };
+
+    emit("recording-complete", { blob, mimeType });
   };
 
   mediaRecorder.value.start();
