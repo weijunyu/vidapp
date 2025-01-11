@@ -239,18 +239,19 @@ video {
 }
 
 .control-btn:disabled {
-  background-color: #cccccc;
+  background-color: #424242;
+  color: #757575;
   cursor: not-allowed;
 }
 
 .control-btn:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: #388e3c;
 }
 
 .metadata {
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #f5f5f5;
+  background-color: #2d2d2d;
   border-radius: 4px;
   width: 100%;
   max-width: 640px;
@@ -258,7 +259,7 @@ video {
 
 .metadata h3 {
   margin: 0 0 0.5rem 0;
-  color: #333;
+  color: #e0e0e0;
 }
 
 .metadata ul {
@@ -269,7 +270,7 @@ video {
 
 .metadata li {
   margin: 0.25rem 0;
-  color: #666;
+  color: #90a4ae;
 }
 
 .download-btn {
@@ -288,5 +289,31 @@ video {
   font-family: monospace;
   font-size: 1.2rem;
   margin: 1rem 0;
+}
+
+@media (prefers-color-scheme: light) {
+  .metadata {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .metadata h3 {
+    color: #1a1a1a;
+  }
+
+  .metadata li {
+    color: #666666;
+  }
+
+  .control-btn:disabled {
+    background-color: #e0e0e0;
+    color: #999999;
+  }
+
+  .recording-timer {
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #ff1744;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
 }
 </style>

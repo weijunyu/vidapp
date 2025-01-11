@@ -39,6 +39,26 @@ async function handleRecordingComplete(payload: {
   </div>
 </template>
 
+<style>
+:root {
+  color-scheme: dark light;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  body {
+    background-color: #f5f5f5;
+    color: #333333;
+  }
+}
+</style>
+
 <style scoped>
 .app-container {
   max-width: 1200px;
@@ -48,18 +68,15 @@ async function handleRecordingComplete(payload: {
 
 h1 {
   text-align: center;
-  color: #ffffff;
   margin-bottom: 2rem;
 }
 
 h2 {
-  color: #34495e;
   margin-bottom: 1rem;
 }
 
 .video-section {
   padding: 2rem;
-  background-color: #f8f9fa;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -74,12 +91,57 @@ h2 {
 .divider {
   margin: 2rem 0;
   height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    #e0e0e0,
-    #e0e0e0,
-    transparent
-  );
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  h1 {
+    color: #e0e0e0;
+  }
+
+  h2 {
+    color: #90a4ae;
+  }
+
+  .video-section {
+    background-color: #2d2d2d;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .divider {
+    background: linear-gradient(
+      to right,
+      transparent,
+      #404040,
+      #404040,
+      transparent
+    );
+  }
+}
+
+/* Light mode styles */
+@media (prefers-color-scheme: light) {
+  h1 {
+    color: #1a1a1a;
+  }
+
+  h2 {
+    color: #2c3e50;
+  }
+
+  .video-section {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .divider {
+    background: linear-gradient(
+      to right,
+      transparent,
+      #d1d1d1,
+      #d1d1d1,
+      transparent
+    );
+  }
 }
 </style>

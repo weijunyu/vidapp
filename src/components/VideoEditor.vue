@@ -484,18 +484,18 @@ defineExpose({
 }
 
 .dropzone {
-  border: 2px dashed #ccc;
+  border: 2px dashed #666;
   border-radius: 4px;
   padding: 2rem;
   text-align: center;
-  background-color: #f8f8f8;
+  background-color: #2d2d2d;
   transition: all 0.3s ease;
   cursor: pointer;
 }
 
 .dropzone.dragging {
   border-color: #4caf50;
-  background-color: #e8f5e9;
+  background-color: #1b5e20;
 }
 
 .dropzone-content {
@@ -506,7 +506,7 @@ defineExpose({
 }
 
 .dropzone-text {
-  color: #666;
+  color: #90a4ae;
 }
 
 .upload-icon {
@@ -516,13 +516,13 @@ defineExpose({
 .metadata {
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #f5f5f5;
+  background-color: #2d2d2d;
   border-radius: 4px;
 }
 
 .metadata h3 {
   margin: 0 0 0.5rem 0;
-  color: #333;
+  color: #e0e0e0;
 }
 
 .metadata ul {
@@ -533,7 +533,7 @@ defineExpose({
 
 .metadata li {
   margin: 0.25rem 0;
-  color: #666;
+  color: #90a4ae;
 }
 
 .video-player {
@@ -552,12 +552,12 @@ defineExpose({
   max-width: 640px;
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #f5f5f5;
+  background-color: #2d2d2d;
   border-radius: 4px;
 }
 
 .trim-controls h3 {
-  color: #333;
+  color: #e0e0e0;
 }
 
 .time-controls {
@@ -575,16 +575,17 @@ defineExpose({
 
 .time-input label {
   min-width: 80px;
-  color: #666;
+  color: #90a4ae;
 }
 
 .time-input input[type="range"] {
   flex: 1;
+  background-color: #424242;
 }
 
 .time-input span {
   min-width: 50px;
-  color: #666;
+  color: #90a4ae;
 }
 
 .preview-controls {
@@ -604,8 +605,14 @@ defineExpose({
   transition: background-color 0.3s;
 }
 
-.control-btn:hover {
-  background-color: #45a049;
+.control-btn:hover:not(:disabled) {
+  background-color: #388e3c;
+}
+
+.control-btn:disabled {
+  background-color: #424242;
+  color: #757575;
+  cursor: not-allowed;
 }
 
 .trim-btn {
@@ -628,7 +635,7 @@ defineExpose({
 .progress-bar {
   flex: 1;
   height: 8px;
-  background-color: #e0e0e0;
+  background-color: #424242;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -639,21 +646,15 @@ defineExpose({
   transition: width 0.3s ease;
 }
 
-.progress-text {
-  min-width: 4rem;
-  color: #666;
-  font-size: 0.9rem;
-}
-
+.progress-text,
 .duration-text {
-  min-width: 6rem;
-  color: #666;
+  color: #90a4ae;
   font-size: 0.9rem;
 }
 
 .or-divider {
   margin: 0.5rem 0;
-  color: #666;
+  color: #90a4ae;
   font-size: 0.9rem;
 }
 
@@ -671,13 +672,13 @@ defineExpose({
 }
 
 .file-input-label:hover {
-  background-color: #45a049;
+  background-color: #388e3c;
 }
 
 .videos-list {
   margin-top: 1rem;
   padding: 1rem;
-  background-color: #f5f5f5;
+  background-color: #2d2d2d;
   border-radius: 4px;
 }
 
@@ -691,17 +692,17 @@ defineExpose({
   justify-content: space-between;
   padding: 0.5rem;
   margin: 0.25rem 0;
-  background-color: white;
+  background-color: #424242;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .videos-list li.active {
-  background-color: #e3f2fd;
+  background-color: #1e3a5f;
 }
 
 .videos-list li:hover {
-  background-color: #f5f5f5;
+  background-color: #505050;
 }
 
 .video-info {
@@ -713,10 +714,84 @@ defineExpose({
 
 .video-name {
   font-weight: 500;
+  color: #e0e0e0;
 }
 
 .video-duration {
   font-size: 0.9em;
-  color: #666;
+  color: #90a4ae;
+}
+
+@media (prefers-color-scheme: light) {
+  .dropzone {
+    border-color: #d1d1d1;
+    background-color: #ffffff;
+  }
+
+  .dropzone.dragging {
+    border-color: #4caf50;
+    background-color: #e8f5e9;
+  }
+
+  .dropzone-text {
+    color: #666666;
+  }
+
+  .metadata,
+  .trim-controls,
+  .videos-list {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .metadata h3,
+  .trim-controls h3,
+  .videos-list h3 {
+    color: #1a1a1a;
+  }
+
+  .metadata li,
+  .time-input label,
+  .time-input span,
+  .progress-text,
+  .duration-text,
+  .or-divider {
+    color: #666666;
+  }
+
+  .time-input input[type="range"] {
+    background-color: #f0f0f0;
+  }
+
+  .control-btn:disabled {
+    background-color: #e0e0e0;
+    color: #999999;
+  }
+
+  .progress-bar {
+    background-color: #f0f0f0;
+  }
+
+  .videos-list li {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+  }
+
+  .videos-list li.active {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+  }
+
+  .videos-list li:hover {
+    background-color: #f5f5f5;
+  }
+
+  .video-name {
+    color: #1a1a1a;
+  }
+
+  .video-duration {
+    color: #666666;
+  }
 }
 </style>
