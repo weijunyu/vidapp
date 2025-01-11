@@ -56,42 +56,54 @@ function loadVideoFromBlob(
   const video = document.createElement("video");
   video.preload = "metadata";
 
-  const videoObjectURL = URL.createObjectURL(blob);
+  const blobUrl = URL.createObjectURL(blob);
 
   return new Promise<boolean>((resolve) => {
+    const cleanup = () => {
+      video.removeAttribute("src");
+      video.load(); // Ensures video resources are released
+    };
+
     video.onloadedmetadata = async () => {
-      const metadata: VideoMetadata = {
-        name: filename,
-        size: `${(blob.size / (1024 * 1024)).toFixed(2)} MB`,
-        type: blob.type,
-        duration: formatTime(video.duration),
-        url: videoObjectURL,
-        trimStart: 0,
-        trimEnd: video.duration,
-        videoDuration: video.duration,
-        width: video.videoWidth,
-        height: video.videoHeight,
-      };
+      try {
+        const metadata: VideoMetadata = {
+          name: filename,
+          size: `${(blob.size / (1024 * 1024)).toFixed(2)} MB`,
+          type: blob.type,
+          duration: formatTime(video.duration),
+          url: blobUrl,
+          trimStart: 0,
+          trimEnd: video.duration,
+          videoDuration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+        };
 
-      // Add to videos array and set as current video
-      videos.value.push(metadata);
-      videoMetadata.value = metadata;
-      videoUrl.value = metadata.url;
+        // Add to videos array and set as current video
+        videos.value.push(metadata);
+        videoMetadata.value = metadata;
+        videoUrl.value = metadata.url;
 
-      // Update current trim values to match selected video
-      videoDuration.value = metadata.videoDuration;
-      trimStart.value = metadata.trimStart;
-      trimEnd.value = metadata.trimEnd;
+        // Update current trim values to match selected video
+        videoDuration.value = metadata.videoDuration;
+        trimStart.value = metadata.trimStart;
+        trimEnd.value = metadata.trimEnd;
 
-      resolve(true);
+        resolve(true);
+      } finally {
+        cleanup();
+      }
     };
 
     video.onerror = () => {
       console.error("Error loading video metadata");
+      cleanup();
+      URL.revokeObjectURL(blobUrl);
       resolve(false);
     };
 
-    video.src = videoObjectURL;
+    video.src = blobUrl;
+    video.play(); // we must call this for video duration to be available!
   });
 }
 
@@ -101,38 +113,58 @@ function loadVideo(file: File) {
     return false;
   }
 
-  const videoObjectURL = URL.createObjectURL(file);
-
   const video = document.createElement("video");
   video.preload = "metadata";
 
-  video.onloadedmetadata = () => {
-    const metadata: VideoMetadata = {
-      name: file.name,
-      size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      type: file.type,
-      duration: formatTime(video.duration),
-      url: videoObjectURL,
-      trimStart: 0,
-      trimEnd: video.duration,
-      videoDuration: video.duration,
-      width: video.videoWidth,
-      height: video.videoHeight,
+  const blobUrl = URL.createObjectURL(file);
+
+  return new Promise<boolean>((resolve) => {
+    const cleanup = () => {
+      video.removeAttribute("src");
+      video.load(); // Ensures video resources are released
     };
 
-    // Add to videos array and set as current video
-    videos.value.push(metadata);
-    videoMetadata.value = metadata;
-    videoUrl.value = metadata.url;
+    video.onloadedmetadata = () => {
+      try {
+        const metadata: VideoMetadata = {
+          name: file.name,
+          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+          type: file.type,
+          duration: formatTime(video.duration),
+          url: blobUrl,
+          trimStart: 0,
+          trimEnd: video.duration,
+          videoDuration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+        };
 
-    // Update current trim values to match selected video
-    videoDuration.value = metadata.videoDuration;
-    trimStart.value = metadata.trimStart;
-    trimEnd.value = metadata.trimEnd;
-  };
+        // Add to videos array and set as current video
+        videos.value.push(metadata);
+        videoMetadata.value = metadata;
+        videoUrl.value = metadata.url;
 
-  video.src = videoObjectURL;
-  return true;
+        // Update current trim values to match selected video
+        videoDuration.value = metadata.videoDuration;
+        trimStart.value = metadata.trimStart;
+        trimEnd.value = metadata.trimEnd;
+
+        resolve(true);
+      } finally {
+        cleanup();
+      }
+    };
+
+    video.onerror = () => {
+      console.error("Error loading video metadata");
+      cleanup();
+      URL.revokeObjectURL(blobUrl);
+      resolve(false);
+    };
+
+    video.src = blobUrl;
+    video.play(); // we must call this for video duration to be available!
+  });
 }
 // #endregion
 
