@@ -12,6 +12,8 @@ interface VideoMetadata {
   trimStart: number;
   trimEnd: number;
   videoDuration: number;
+  width: number;
+  height: number;
 }
 // #endregion
 
@@ -58,26 +60,6 @@ function loadVideoFromBlob(
 
   return new Promise<boolean>((resolve) => {
     video.onloadedmetadata = async () => {
-      console.log("Video attributes:", {
-        duration: video.duration,
-        readyState: video.readyState,
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-        networkState: video.networkState,
-        error: video.error,
-        currentSrc: video.currentSrc,
-        seeking: video.seeking,
-        paused: video.paused,
-        played: video.played,
-        buffered: video.buffered,
-        currentTime: video.currentTime,
-      });
-
-      // Ensure video duration is valid
-      if (!isFinite(video.duration)) {
-        console.error("Invalid video duration", video.duration);
-      }
-
       const metadata: VideoMetadata = {
         name: filename,
         size: `${(blob.size / (1024 * 1024)).toFixed(2)} MB`,
@@ -87,6 +69,8 @@ function loadVideoFromBlob(
         trimStart: 0,
         trimEnd: video.duration,
         videoDuration: video.duration,
+        width: video.videoWidth,
+        height: video.videoHeight,
       };
 
       // Add to videos array and set as current video
@@ -132,6 +116,8 @@ function loadVideo(file: File) {
       trimStart: 0,
       trimEnd: video.duration,
       videoDuration: video.duration,
+      width: video.videoWidth,
+      height: video.videoHeight,
     };
 
     // Add to videos array and set as current video
@@ -228,7 +214,11 @@ async function exportVideo() {
     trimStartTime.value = Date.now();
     trimDuration.value = "";
 
-    const composition = new core.Composition();
+    const composition = new core.Composition({
+      // Set overall video dimensions using the first video's dimensions
+      width: videos.value[0].width,
+      height: videos.value[0].height,
+    });
     const track = composition.createTrack("video").stacked();
 
     // Process each video in sequence
@@ -333,6 +323,8 @@ defineExpose({
         <li>Size: {{ videoMetadata.size }}</li>
         <li>Format: {{ videoMetadata.type }}</li>
         <li>Duration: {{ videoMetadata.duration }}</li>
+        <li>Width: {{ videoMetadata.width }}</li>
+        <li>Height: {{ videoMetadata.height }}</li>
       </ul>
     </div>
 
