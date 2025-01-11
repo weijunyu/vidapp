@@ -227,6 +227,30 @@ function selectVideo(video: VideoMetadata) {
   trimStart.value = video.trimStart;
   trimEnd.value = video.trimEnd;
 }
+
+function deleteVideo(index: number) {
+  // Clean up the video URL
+  URL.revokeObjectURL(videos.value[index].url);
+
+  // Remove the video from the array
+  videos.value.splice(index, 1);
+
+  // If we deleted the currently selected video, clear the selection
+  if (videoUrl.value === null || videos.value.length === 0) {
+    videoUrl.value = null;
+    videoMetadata.value = null;
+    return;
+  }
+
+  // If we deleted the currently selected video, select the previous video (or the first one if we're at the start)
+  if (
+    videoMetadata.value &&
+    !videos.value.find((v) => v.url === videoMetadata.value?.url)
+  ) {
+    const newIndex = Math.min(index, videos.value.length - 1);
+    selectVideo(videos.value[newIndex]);
+  }
+}
 // #endregion
 
 // #region Video Playback Controls
@@ -451,17 +475,32 @@ defineExpose({
           v-for="(video, index) in videos"
           :key="index"
           :class="{ active: videoUrl === video.url }"
-          @click="selectVideo(video)"
+          role="listitem"
         >
-          <div class="video-info">
+          <div
+            class="video-info"
+            role="button"
+            tabindex="0"
+            :aria-label="'Select video: ' + video.name"
+            @click="selectVideo(video)"
+            @keydown.enter="selectVideo(video)"
+            @keydown.space.prevent="selectVideo(video)"
+          >
             <span class="video-name">{{ video.name }}</span>
-            <span class="video-duration">
+            <span class="video-duration" aria-label="Video trim duration">
               {{ formatTime(video.trimStart) }} -
               {{ formatTime(video.trimEnd) }} ({{
                 formatTime(video.trimEnd - video.trimStart)
               }})
             </span>
           </div>
+          <button
+            class="delete-btn"
+            @click="deleteVideo(index)"
+            :aria-label="'Delete video: ' + video.name"
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
         </li>
       </ul>
 
@@ -690,19 +729,15 @@ defineExpose({
 .videos-list li {
   display: flex;
   justify-content: space-between;
-  padding: 0.5rem;
+  align-items: center;
+  padding: 0;
   margin: 0.25rem 0;
   background-color: #424242;
   border-radius: 4px;
-  cursor: pointer;
 }
 
-.videos-list li.active {
+.videos-list li.active .video-info {
   background-color: #1e3a5f;
-}
-
-.videos-list li:hover {
-  background-color: #505050;
 }
 
 .video-info {
@@ -710,6 +745,29 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.video-info:hover {
+  background-color: #505050;
+}
+
+.video-info:focus {
+  outline: 2px solid #2196f3;
+  outline-offset: -2px;
+  background-color: #505050;
+}
+
+.video-info:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.video-info:focus-visible {
+  outline: 2px solid #2196f3;
+  outline-offset: -2px;
 }
 
 .video-name {
@@ -720,6 +778,23 @@ defineExpose({
 .video-duration {
   font-size: 0.9em;
   color: #90a4ae;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #ff5252;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.delete-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 82, 82, 0.1);
 }
 
 @media (prefers-color-scheme: light) {
@@ -777,12 +852,17 @@ defineExpose({
     border: 1px solid #e0e0e0;
   }
 
-  .videos-list li.active {
+  .videos-list li.active .video-info {
     background-color: #e3f2fd;
-    border-color: #2196f3;
   }
 
-  .videos-list li:hover {
+  .video-info:hover {
+    background-color: #f5f5f5;
+  }
+
+  .video-info:focus,
+  .video-info:focus-visible {
+    outline-color: #1976d2;
     background-color: #f5f5f5;
   }
 
@@ -792,6 +872,14 @@ defineExpose({
 
   .video-duration {
     color: #666666;
+  }
+
+  .delete-btn {
+    color: #d32f2f;
+  }
+
+  .delete-btn:hover {
+    background-color: rgba(211, 47, 47, 0.1);
   }
 }
 
@@ -873,6 +961,22 @@ defineExpose({
     .video-duration {
       font-size: 0.8em;
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .delete-btn {
+    padding: 0.5rem;
+    margin-left: auto;
+  }
+
+  .videos-list li {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .video-info {
+    padding: 0.75rem 0.5rem;
   }
 }
 </style>
