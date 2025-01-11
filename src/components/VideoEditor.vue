@@ -61,10 +61,17 @@ function loadVideoFromBlob(
   return new Promise<boolean>((resolve) => {
     const cleanup = () => {
       video.removeAttribute("src");
-      video.load(); // Ensures video resources are released
+      video.remove();
     };
 
-    video.onloadedmetadata = async () => {
+    let metadataLoaded = false;
+
+    video.onseeked = () => {
+      if (metadataLoaded) {
+        video.onseeked = null;
+        return;
+      }
+
       try {
         const metadata: VideoMetadata = {
           name: filename,
@@ -89,6 +96,7 @@ function loadVideoFromBlob(
         trimStart.value = metadata.trimStart;
         trimEnd.value = metadata.trimEnd;
 
+        metadataLoaded = true;
         resolve(true);
       } finally {
         cleanup();
@@ -103,7 +111,7 @@ function loadVideoFromBlob(
     };
 
     video.src = blobUrl;
-    video.play(); // we must call this for video duration to be available!
+    video.currentTime = Number.MAX_SAFE_INTEGER; // Trigger seek to force metadata load in Chrome
   });
 }
 
@@ -121,10 +129,17 @@ function loadVideo(file: File) {
   return new Promise<boolean>((resolve) => {
     const cleanup = () => {
       video.removeAttribute("src");
-      video.load(); // Ensures video resources are released
+      video.remove();
     };
 
-    video.onloadedmetadata = () => {
+    let metadataLoaded = false;
+
+    video.onseeked = () => {
+      if (metadataLoaded) {
+        video.onseeked = null;
+        return;
+      }
+
       try {
         const metadata: VideoMetadata = {
           name: file.name,
@@ -149,6 +164,7 @@ function loadVideo(file: File) {
         trimStart.value = metadata.trimStart;
         trimEnd.value = metadata.trimEnd;
 
+        metadataLoaded = true;
         resolve(true);
       } finally {
         cleanup();
@@ -163,7 +179,7 @@ function loadVideo(file: File) {
     };
 
     video.src = blobUrl;
-    video.play(); // we must call this for video duration to be available!
+    video.currentTime = Number.MAX_SAFE_INTEGER; // Trigger seek to force metadata load in Chrome
   });
 }
 // #endregion
