@@ -17,7 +17,10 @@ const videoMetadata = ref<{
   duration: string;
 } | null>(null);
 const recordingStartTime = ref<number>(0);
-const currentDuration = ref("0:00");
+const currentDuration = ref("0:00"); // displayed for user
+const resetCurrentDuration = () => {
+  currentDuration.value = "0:00";
+};
 const maxDuration = ref<number>(0); // in seconds
 let durationInterval: number | null = null;
 let wakeLock: WakeLockSentinel | null = null;
@@ -79,7 +82,6 @@ function getBestSupportedMimeType() {
   return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 }
 
-const recordingDurationInMs = ref(0);
 // Start recording
 async function startRecording() {
   if (!stream.value) return;
@@ -123,7 +125,8 @@ async function startRecording() {
   mediaRecorder.value.onstop = async () => {
     let blob = new Blob(recordedChunks.value, { type: mimeType });
     if (mimeType.startsWith("video/webm")) {
-      blob = await fixWebmDuration(blob, recordingDurationInMs.value);
+      const recordingDurationInMs = Date.now() - recordingStartTime.value;
+      blob = await fixWebmDuration(blob, recordingDurationInMs);
     }
     recordedVideo.value = blob;
 
@@ -154,7 +157,7 @@ function stopRecording() {
       durationInterval = null;
     }
 
-    recordingDurationInMs.value = Date.now() - recordingStartTime.value; // Already in milliseconds since Date.now() returns ms
+    resetCurrentDuration();
 
     // Release wake lock
     releaseWakeLock();
