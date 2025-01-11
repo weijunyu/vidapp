@@ -5,6 +5,7 @@ import RecordingControls from "./recorder/RecordingControls.vue";
 import RecordingMetadata from "./recorder/RecordingMetadata.vue";
 import DurationInput from "./recorder/DurationInput.vue";
 import { fixWebmDuration } from "@fix-webm-duration/fix";
+import * as Sentry from "@sentry/vue";
 
 const stream = ref<MediaStream | null>(null);
 const mediaRecorder = ref<MediaRecorder | null>(null);
@@ -38,6 +39,12 @@ async function startCamera() {
     });
   } catch (err) {
     console.error("Error accessing camera:", err);
+    Sentry.captureException(err, {
+      extra: {
+        userAgent: navigator.userAgent,
+        mediaDevicesSupported: !!navigator.mediaDevices,
+      },
+    });
   }
 }
 
@@ -54,6 +61,11 @@ async function requestWakeLock() {
     wakeLock = await navigator.wakeLock.request("screen");
   } catch (err) {
     console.error("Failed to request wake lock:", err);
+    Sentry.captureException(err, {
+      extra: {
+        wakeLockSupported: "wakeLock" in navigator,
+      },
+    });
   }
 }
 
@@ -88,61 +100,91 @@ async function startRecording() {
 
   const mimeType = getBestSupportedMimeType();
   if (!mimeType) {
-    console.error("No supported media recording MIME types found");
+    const error = new Error("No supported media recording MIME types found");
+    console.error(error);
+    Sentry.captureException(error, {
+      extra: {
+        supportedTypes: MediaRecorder.isTypeSupported,
+      },
+    });
     return;
   }
 
-  recordedChunks.value = [];
-  mediaRecorder.value = new MediaRecorder(stream.value, {
-    mimeType: mimeType,
-  });
-  recordingStartTime.value = Date.now();
+  try {
+    recordedChunks.value = [];
+    mediaRecorder.value = new MediaRecorder(stream.value, {
+      mimeType: mimeType,
+    });
+    recordingStartTime.value = Date.now();
 
-  // Request wake lock
-  await requestWakeLock();
+    // Request wake lock
+    await requestWakeLock();
 
-  // Start duration timer
-  durationInterval = window.setInterval(() => {
-    currentDuration.value = calculateDuration();
+    // Start duration timer
+    durationInterval = window.setInterval(() => {
+      currentDuration.value = calculateDuration();
 
-    // Check if max duration is reached
-    if (maxDuration.value > 0) {
-      const currentSeconds = Math.floor(
-        (Date.now() - recordingStartTime.value) / 1000
-      );
-      if (currentSeconds >= maxDuration.value) {
-        stopRecording();
+      // Check if max duration is reached
+      if (maxDuration.value > 0) {
+        const currentSeconds = Math.floor(
+          (Date.now() - recordingStartTime.value) / 1000
+        );
+        if (currentSeconds >= maxDuration.value) {
+          stopRecording();
+        }
       }
-    }
-  }, 1000);
+    }, 1000);
 
-  mediaRecorder.value.ondataavailable = (event) => {
-    if (event.data.size > 0) {
-      recordedChunks.value.push(event.data);
-    }
-  };
-
-  mediaRecorder.value.onstop = async () => {
-    let blob = new Blob(recordedChunks.value, { type: mimeType });
-    if (mimeType.startsWith("video/webm")) {
-      const recordingDurationInMs = Date.now() - recordingStartTime.value;
-      blob = await fixWebmDuration(blob, recordingDurationInMs);
-    }
-    recordedVideo.value = blob;
-
-    // Calculate metadata
-    const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
-    videoMetadata.value = {
-      size: `${sizeMB} MB`,
-      type: blob.type,
-      duration: calculateDuration(),
+    mediaRecorder.value.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.value.push(event.data);
+      }
     };
 
-    emit("recording-complete", { blob, mimeType });
-  };
+    mediaRecorder.value.onstop = async () => {
+      try {
+        let blob = new Blob(recordedChunks.value, { type: mimeType });
+        if (mimeType.startsWith("video/webm")) {
+          const recordingDurationInMs = Date.now() - recordingStartTime.value;
+          blob = await fixWebmDuration(blob, recordingDurationInMs);
+        }
+        recordedVideo.value = blob;
 
-  mediaRecorder.value.start();
-  isRecording.value = true;
+        // Calculate metadata
+        const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+        videoMetadata.value = {
+          size: `${sizeMB} MB`,
+          type: blob.type,
+          duration: calculateDuration(),
+        };
+
+        emit("recording-complete", { blob, mimeType });
+      } catch (err) {
+        console.error("Error processing recorded video:", err);
+        Sentry.captureException(err, {
+          extra: {
+            mimeType,
+            recordedChunksCount: recordedChunks.value.length,
+            recordingDuration: Date.now() - recordingStartTime.value,
+          },
+        });
+      }
+    };
+
+    mediaRecorder.value.start();
+    isRecording.value = true;
+  } catch (err) {
+    console.error("Error starting recording:", err);
+    Sentry.captureException(err, {
+      extra: {
+        mimeType,
+        streamTracks: stream.value?.getTracks().map((t) => ({
+          kind: t.kind,
+          label: t.label,
+        })),
+      },
+    });
+  }
 }
 
 // Stop recording

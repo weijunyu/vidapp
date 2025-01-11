@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from "vue";
 import * as core from "@diffusionstudio/core";
+import * as Sentry from "@sentry/vue";
 
 // #region Types
 interface VideoMetadata {
@@ -103,8 +104,15 @@ function loadVideoFromBlob(
       }
     };
 
-    video.onerror = () => {
+    video.onerror = (error) => {
       console.error("Error loading video metadata");
+      Sentry.captureException(error, {
+        extra: {
+          mimeType,
+          filename,
+          blobSize: blob.size,
+        },
+      });
       cleanup();
       URL.revokeObjectURL(blobUrl);
       resolve(false);
@@ -342,6 +350,17 @@ async function exportVideo() {
     exportProgress.value = null;
   } catch (err) {
     console.error("Error exporting video:", err);
+    Sentry.captureException(err, {
+      extra: {
+        videosCount: videos.value.length,
+        videoMetadata: videos.value.map((v) => ({
+          name: v.name,
+          size: v.size,
+          type: v.type,
+          duration: v.duration,
+        })),
+      },
+    });
     alert("Failed to export video. Please try again.");
     exportProgress.value = null;
     trimDuration.value = "";
