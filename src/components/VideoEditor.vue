@@ -465,6 +465,7 @@ defineExpose({
         controls
         class="player"
         @timeupdate="handleTimeUpdate"
+        playsinline
       ></video>
     </div>
 
