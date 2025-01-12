@@ -12,6 +12,7 @@
     "@diffusionstudio/core": "^1.6.0",
     "@fix-webm-duration/fix": "^1.0.1",
     "@sentry/vue": "^8.48.0",
+    "media-chrome": "^4.3.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

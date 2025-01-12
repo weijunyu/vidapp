@@ -2,6 +2,7 @@
 import { ref, onUnmounted } from "vue";
 import * as core from "@diffusionstudio/core";
 import * as Sentry from "@sentry/vue";
+import MediaChromePlayer from "./MediaChromePlayer.vue";
 
 // #region Types
 interface VideoMetadata {
@@ -22,7 +23,9 @@ interface VideoMetadata {
 const isDragging = ref(false);
 const videoMetadata = ref<VideoMetadata | null>(null);
 const videoUrl = ref<string | null>(null);
-const videoPlayer = ref<HTMLVideoElement | null>(null);
+const videoPlayer = ref<typeof MediaChromePlayer | HTMLVideoElement | null>(
+  null
+);
 
 // Video trim state
 const videoDuration = ref(0);
@@ -36,6 +39,8 @@ const trimStartTime = ref<number>(0);
 const trimDuration = ref<string>("");
 
 const videos = ref<VideoMetadata[]>([]);
+
+const playerType = ref<"native" | "media-chrome">("media-chrome");
 // #endregion
 
 // #region Utility Functions
@@ -478,7 +483,31 @@ defineExpose({
     </div>
 
     <div v-if="videoUrl" class="video-player">
+      <div class="player-type-selector">
+        <button
+          class="segment-btn"
+          :class="{ active: playerType === 'native' }"
+          @click="playerType = 'native'"
+        >
+          Native Player
+        </button>
+        <button
+          class="segment-btn"
+          :class="{ active: playerType === 'media-chrome' }"
+          @click="playerType = 'media-chrome'"
+        >
+          Media Chrome
+        </button>
+      </div>
+
+      <MediaChromePlayer
+        v-if="playerType === 'media-chrome'"
+        ref="videoPlayer"
+        :src="videoUrl"
+        @timeupdate="handleTimeUpdate"
+      />
       <video
+        v-else
         ref="videoPlayer"
         :src="videoUrl"
         controls
@@ -598,6 +627,9 @@ defineExpose({
 .video-player {
   margin-top: 1rem;
   width: 100%;
+  background-color: #2d2d2d;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .player {
@@ -817,6 +849,35 @@ defineExpose({
   background-color: rgba(255, 82, 82, 0.1);
 }
 
+.player-type-selector {
+  display: flex;
+  gap: 1px;
+  background-color: #424242;
+  padding: 2px;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.segment-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  background-color: transparent;
+  color: #90a4ae;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.segment-btn:hover:not(.active) {
+  background-color: #505050;
+}
+
+.segment-btn.active {
+  background-color: #2196f3;
+  color: white;
+}
+
 @media (prefers-color-scheme: light) {
   .dropzone {
     border-color: #d1d1d1;
@@ -900,6 +961,27 @@ defineExpose({
 
   .delete-btn:hover {
     background-color: rgba(211, 47, 47, 0.1);
+  }
+
+  .video-player {
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .player-type-selector {
+    background-color: #e0e0e0;
+  }
+
+  .segment-btn {
+    color: #666666;
+  }
+
+  .segment-btn:hover:not(.active) {
+    background-color: #f5f5f5;
+  }
+
+  .segment-btn.active {
+    background-color: #1976d2;
   }
 }
 
@@ -997,6 +1079,15 @@ defineExpose({
 
   .video-info {
     padding: 0.75rem 0.5rem;
+  }
+
+  .player-type-selector {
+    margin-bottom: 0.5rem;
+  }
+
+  .segment-btn {
+    padding: 0.375rem;
+    font-size: 0.9rem;
   }
 }
 </style>
